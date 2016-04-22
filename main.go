@@ -11,7 +11,7 @@ import (
 
 const (
 	listenOn = 8101
-	proxyAt  = 8102
+	proxyAt  = 8100
 
 	keyHeader = "X-WebXG-Proc-Key"
 )
@@ -42,6 +42,7 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 		time.Sleep(time.Duration(toAck) * time.Millisecond)
 
 		fmt.Fprintf(ctx, "You again? Okay, I've responded to your uuid ( %s ) in %.2f seconds\n", pqk, toAck)
+		fmt.Printf("3rd > %.2f\n", toAck)
 
 	} else {
 		// A fresh request. Give them a new id back, and later tell them it's ready
@@ -55,9 +56,11 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 		time.Sleep(time.Duration(toAck) * time.Millisecond)
 
 		fmt.Fprintf(ctx, "Hi there, newcomer! I've delayed you by %.2f, but Your response will be ready in %.2f\n", toAck, toReady)
+		fmt.Printf("2nd > %.2f\n", toAck)
 
 		id := uuid.NewV4()
 		ctx.Response.Header.Set(keyHeader, id.String())
+		ctx.Response.SetStatusCode(102)
 
 		go readyLater(id, toReady)
 	}
@@ -72,6 +75,7 @@ func readyLater(id uuid.UUID, delay float64) {
 	req.Header.SetMethod("READY")
 	req.Header.SetRequestURI(fmt.Sprintf("http://localhost:%d/%s", proxyAt, id.String()))
 
+	fmt.Printf("2nd > %.2f\n", delay)
 	resp := &fasthttp.Response{}
 
 	err := c.Do(req, resp)
