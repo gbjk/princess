@@ -12,10 +12,11 @@ import (
 
 const (
 	listenOn = 8101
-	proxyAt  = 8100
+	proxyIp  = "192.168.99.101"
 
-	keyHeader = "X-WebXG-Proc-Key"
-	idHeader  = "X-WebXG-Request-ID"
+	keyHeader  = "X-WebXG-Proc-Key"
+	idHeader   = "X-WebXG-Request-ID"
+	portHeader = "X-Webxg-Frontend-Port"
 )
 
 var c = fasthttp.Client{}
@@ -33,7 +34,7 @@ type requestTimer struct {
 func main() {
 
 	fmt.Println("Listening on ", listenOn)
-	fmt.Println("Upstreaming to", proxyAt)
+	fmt.Println("Upstreaming to", proxyIp)
 
 	r = rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -49,6 +50,7 @@ func main() {
 func requestHandler(ctx *fasthttp.RequestCtx) {
 	pqk := ctx.Request.Header.Peek(keyHeader)
 	rId := string(ctx.Request.Header.Peek(idHeader))
+	rPort := string(ctx.Request.Header.Peek(portHeader))
 
 	if len(pqk) > 0 {
 		// Existing check on rendering a request already seen
@@ -97,18 +99,18 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 		ctx.Response.Header.Set(idHeader, rId)
 		ctx.Response.SetStatusCode(102)
 
-		go readyLater(id, rId, toReady)
+		go readyLater(id, rId, rPort, toReady)
 	}
 }
 
-func readyLater(id uuid.UUID, rId string, delay float64) {
+func readyLater(id uuid.UUID, rId string, proxyPort string, delay float64) {
 
 	time.Sleep(time.Duration(delay) * time.Millisecond)
 
 	req := &fasthttp.Request{}
 
 	req.Header.SetMethod("READY")
-	req.Header.SetRequestURI(fmt.Sprintf("http://localhost:%d/%s", proxyAt, id.String()))
+	req.Header.SetRequestURI(fmt.Sprintf("http://%s:%s/%s", proxyIp, proxyPort, id.String()))
 	req.Header.Set(idHeader, rId)
 
 	resp := &fasthttp.Response{}
